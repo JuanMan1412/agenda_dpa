@@ -1,6 +1,8 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from .authentication import EsAplicacionExterna, ExternoApiKeyAuthentication
 from .models import Agenda
@@ -16,6 +18,7 @@ class AgendaListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class AgendaCargaManualView(APIView):
     """
     Usada por el personal de mesa de entradas desde el frontend
@@ -24,6 +27,7 @@ class AgendaCargaManualView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def post(self, request):
         letra = request.data.get("letra")
