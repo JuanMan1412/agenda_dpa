@@ -9,9 +9,14 @@ class AgendaSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "numero",
+            "anio",
             "letra",
+            "asunto",
+            "causante",
             "origen",
             "referencia_externa",
             "fecha_hora",
+            "estado",
+            "fecha_carga_externa",
         ]
         read_only_fields = fields

@@ -1,0 +1,14 @@
+.agenda-panel { overflow: hidden; background: #fbfcff; border: 1px solid #aeb9ca; box-shadow: 0 8px 22px rgba(20, 40, 73, .05); }
+.agenda-panel__header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 17px; border-bottom: 1px solid #cbd3e1; }
+.agenda-panel__header div { display: flex; align-items: center; gap: 9px; }
+.agenda-panel__header .icon { width: 20px; height: 20px; color: #10366d; }
+.agenda-panel__header h2 { margin: 0; color: #0d1b35; font-size: 1rem; }
+.agenda-panel__header > span { color: #52627c; font-size: .76rem; }
+.agenda-panel__message { padding: 35px 18px; margin: 0; color: #68758a; font-size: .88rem; text-align: center; }
+.agenda-panel__message--error { color: #a3222a; }
+.agenda-panel__filters { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 17px; border-bottom: 1px solid #d4dae4; }
+.agenda-panel__filters input { flex: 1; max-width: 310px; min-height: 29px; border: 1px solid #adb9c9; padding: 5px 8px; font-size: .74rem; }
+.agenda-panel__filters div { display: flex; gap: 5px; }
+.agenda-panel__filters button { border: 1px solid #bcc6d6; padding: 5px 8px; color: #365070; background: #fff; font-size: .68rem; font-weight: 700; }
+.agenda-panel__filters button.is-active { color: #fff; background: #12376e; border-color: #12376e; }
+@media (max-width: 620px) { .agenda-panel__filters { align-items: stretch; flex-direction: column; } .agenda-panel__filters input { max-width: none; } }

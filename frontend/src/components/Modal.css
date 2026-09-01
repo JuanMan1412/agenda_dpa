@@ -1,0 +1,7 @@
+.modal-backdrop { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(9, 23, 48, .48); backdrop-filter: blur(3px); }
+.modal { width: min(100%, 580px); padding: 21px; background: #fff; box-shadow: 0 24px 60px rgba(4, 17, 39, .28); animation: modal-in .2s ease both; }
+.modal__header { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 13px; border-bottom: 1px solid #d9dfe8; }
+.modal__header p { margin: 0 0 4px; color: #31558f; font-size: .64rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.modal__header h2 { margin: 0; color: #0d1b35; font-size: 1.25rem; }
+.modal__close { width: 29px; height: 29px; border: 0; color: #415069; background: #eef2f7; font-size: 1.05rem; line-height: 1; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }

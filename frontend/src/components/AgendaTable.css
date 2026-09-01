@@ -1,0 +1,23 @@
+.agenda-table__scroll { overflow-x: auto; }
+.agenda-table { width: 100%; min-width: 1040px; border-collapse: collapse; text-align: left; }
+.agenda-table th { padding: 10px 13px; color: #3c4960; background: #f0f3f8; font-size: .62rem; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.agenda-table td { padding: 11px 13px; border-top: 1px solid #d4dae4; color: #202c40; font-size: .78rem; }
+.agenda-table tbody tr { animation: table-row-in .3s ease both; }
+.agenda-table tbody tr:hover { background: #f2f6fd; }
+.agenda-table__sequence { color: #12376e !important; font-family: Consolas, monospace; font-weight: 800; }
+.agenda-table__subject { max-width: 260px; }
+.agenda-table__date { color: #5a687e !important; white-space: nowrap; }
+.status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; font-size: .61rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.status-badge::before { width: 5px; height: 5px; border-radius: 50%; content: ""; background: currentColor; }
+.status-badge--pendiente { color: #8a5b00; background: #fff1c9; }
+.status-badge--cargado { color: #147043; background: #def4e5; }
+.agenda-table__action { min-height: 26px; padding: 0 7px; font-size: .64rem; white-space: nowrap; }
+.agenda-table__loaded { color: #147043; font-size: .68rem; font-weight: 750; }
+.agenda-table__empty { padding: 28px !important; color: #68758a !important; text-align: center; }
+.agenda-pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 13px; border-top: 1px solid #cbd3e1; color: #5a687e; font-size: .72rem; }
+.agenda-pagination div { display: flex; gap: 4px; }
+.agenda-pagination button { min-width: 28px; height: 27px; padding: 0 7px; color: #173763; background: #fff; border: 1px solid #bcc6d6; font-size: .69rem; font-weight: 700; }
+.agenda-pagination button:hover:not(:disabled), .agenda-pagination button.is-active { color: #fff; background: #12376e; border-color: #12376e; }
+.agenda-pagination button:disabled { color: #a1aab8; background: #f0f2f5; }
+@keyframes table-row-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 520px) { .agenda-pagination { align-items: flex-start; flex-direction: column; } .agenda-pagination div { flex-wrap: wrap; } }

@@ -1,0 +1,7 @@
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 24px 0; }
+.distribution-row { display: flex; justify-content: space-between; margin-top: 10px; color: #38455a; font-size: .68rem; }
+.distribution-row strong { color: #0d1b35; }
+.distribution-row--second { margin-top: 6px; }
+.distribution-progress { height: 4px; margin-top: 4px; overflow: hidden; background: #dbe2ec; }
+.distribution-progress span { display: block; height: 100%; background: #1270ba; transition: width .4s ease; }
+@media (max-width: 720px) { .stats-grid { grid-template-columns: 1fr; gap: 10px; margin: 18px 0; } }

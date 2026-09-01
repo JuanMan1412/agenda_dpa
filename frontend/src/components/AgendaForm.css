@@ -1,0 +1,9 @@
+.agenda-form { display: grid; gap: 13px; padding-top: 16px; }
+.agenda-form__row { display: grid; grid-template-columns: .42fr 1fr; gap: 12px; }
+.agenda-form label { display: grid; gap: 5px; color: #273750; font-size: .76rem; font-weight: 800; }
+.agenda-form input, .agenda-form textarea { width: 100%; border: 1px solid #adb9c9; padding: 8px 9px; color: #14223a; background: #fff; font-size: .84rem; outline: none; resize: vertical; }
+.agenda-form input:focus, .agenda-form textarea:focus { border-color: #175ba5; box-shadow: 0 0 0 3px rgba(23, 91, 165, .13); }
+.agenda-form__note { margin: -2px 0 0; color: #69778c; font-size: .72rem; }
+.agenda-form__error { margin: 0; color: #a3222a; font-size: .78rem; }
+.agenda-form__actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
+@media (max-width: 520px) { .agenda-form__row { grid-template-columns: 1fr; } .agenda-form__actions .button { flex: 1; } }

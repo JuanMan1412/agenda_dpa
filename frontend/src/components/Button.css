@@ -1,0 +1,7 @@
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; border: 1px solid transparent; padding: 0 13px; font-size: .82rem; font-weight: 750; transition: background .18s ease, transform .18s ease; }
+.button--primary { color: #fff; background: #12376e; border-color: #0b2c5d; box-shadow: 0 4px 10px rgba(18, 55, 110, .15); }
+.button--primary:hover:not(:disabled) { background: #0a2c5e; transform: translateY(-1px); }
+.button--secondary { color: #173763; background: #fff; border-color: #aeb9ca; }
+.button--secondary:hover { background: #eef3fb; }
+.button:disabled { cursor: not-allowed; opacity: .65; }
+.button .icon { width: 16px; height: 16px; }

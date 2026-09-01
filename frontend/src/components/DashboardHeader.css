@@ -1,0 +1,5 @@
+.dashboard-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid #cbd3e1; }
+.dashboard-header__eyebrow { margin: 0 0 5px; color: #31558f; font-size: .64rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.dashboard-header h1 { margin: 0 0 5px; color: #0d1b35; font-family: "Aptos Display", "Trebuchet MS", sans-serif; font-size: clamp(1.65rem, 3vw, 2.25rem); letter-spacing: -.035em; line-height: 1.1; }
+.dashboard-header__subtitle { margin: 0; color: #53627b; font-size: .88rem; }
+@media (max-width: 720px) { .dashboard-header { display: grid; } .dashboard-header .button { width: 100%; } }

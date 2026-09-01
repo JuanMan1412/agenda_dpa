@@ -1,0 +1,7 @@
+.metric-card { min-height: 104px; padding: 11px; background: #f9faff; border: 1px solid #bcc6d6; box-shadow: 0 4px 12px rgba(20, 40, 73, .04); }
+.metric-card__top { display: flex; align-items: center; justify-content: space-between; color: #27324a; font-size: .57rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.metric-card__icon { display: grid; width: 25px; height: 25px; place-items: center; color: #153a71; background: #eaf0fb; }
+.metric-card__icon .icon { width: 14px; height: 14px; }
+.metric-card__number, .metric-card__sequence { display: block; margin-top: 16px; color: #0d1b35; font-family: "Aptos Display", "Trebuchet MS", sans-serif; font-size: 1.5rem; letter-spacing: -.04em; line-height: 1; }
+.metric-card__sequence { font-size: clamp(.95rem, 1.8vw, 1.28rem); }
+.metric-card__hint { display: block; margin-top: 4px; color: #68758a; font-size: .64rem; }
