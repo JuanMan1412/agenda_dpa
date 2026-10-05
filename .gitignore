@@ -1,9 +1,51 @@
-backend/venv/
-backend/__pycache__/
-backend/**/__pycache__/
-backend/.env
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-**/*.pyc
+# Variables de entorno y secretos locales
+.env
+.env.*
+*.env
+!.env.example
+!.env.sample
+
+# Python: entornos virtuales y archivos generados
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Django: datos y archivos generados
+*.sqlite3
+*.sqlite3-journal
+backend/media/
+backend/staticfiles/
+
+# Node / Vite
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+.vite/
+*.tsbuildinfo
+
+# Logs y archivos temporales
 *.log
+*.tmp
+.local-backups/
+*.swp
+*.swo
+*~
+
+# Editores y sistema operativo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
