@@ -1,0 +1,20 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; Configurar numeración</div>
+{% endblock %}
+{% block content %}
+<div class="module">
+  <h2>Numeración del año {{ numeracion.anio }}</h2>
+  <p>Estado: {% if numeracion.habilitado %}habilitada{% else %}bloqueada{% endif %}.</p>
+  <p>Último número en base: {{ numeracion.ultimo_numero_base|default_if_none:"sin registros" }}.
+     Último número consumido: {{ numeracion.ultimo_numero_consumido }}.</p>
+  <p>Próximo expediente actual: <strong>{{ numeracion.proximo_numero }}/{{ numeracion.anio }}</strong>.</p>
+  {% if control.fecha_confirmacion %}<p>Última confirmación: {{ control.fecha_confirmacion }} por {{ control.confirmado_por }}.</p>{% endif %}
+</div>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <p>El próximo expediente será el número ingresado más uno. No se puede retroceder por debajo del último número consumido.</p>
+  <div class="submit-row"><input type="submit" class="default" value="Confirmar número y habilitar registros"></div>
+</form>
+{% endblock %}

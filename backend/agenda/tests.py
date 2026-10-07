@@ -27,7 +27,8 @@ class RegistroTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='mesa.test', rol=Rol.objects.get(descripcion='ADMINISTRATIVO'))
         self.client.force_authenticate(user=self.user)
-        ControlNumeracion.objects.filter(pk=1).update(habilitado=True)
+        ControlNumeracion.objects.update_or_create(pk=1, defaults={'habilitado': True})
+        CorrelativoAnual.objects.get_or_create(anio=timezone.localdate().year)
 
     def manual(self, **values):
         return self.client.post(reverse('expediente-manual'), {**BODY, **values}, format='json')

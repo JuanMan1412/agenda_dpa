@@ -1,4 +1,10 @@
 import api from '../services/api';
+export async function novedadesExpedientes(cursor, signal) {
+  const { data } = await api.get('expedientes/novedades/', {
+    params: cursor === null ? {} : { despues_id: cursor }, signal,
+  });
+  return data;
+}
 export async function listarAgenda(params = {}, signal) {
   const { data } = await api.get('expedientes/', { params, signal }); return data;
 }
@@ -18,3 +24,9 @@ export async function anularExpediente(id, motivo) {
   const { data } = await api.post(`expedientes/${id}/anular/`, { motivo }); return data;
 }
 export default api;
+export async function listarPendientes(params = {}, signal) {
+  const { data } = await api.get('expedientes/pendientes-sigedoc/', { params, signal }); return data;
+}
+export async function editarExpediente(id, payload) {
+  const { data } = await api.patch(`expedientes/${id}/`, payload); return data;
+}

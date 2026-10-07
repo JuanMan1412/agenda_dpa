@@ -1,4 +1,6 @@
-// Minimal notification helper
+import { toast } from 'sonner';
+
+// Notification history with Sonner feedback
 // Persist notifications in localStorage under key 'app_notifications'
 
 const STORAGE_KEY = 'app_notifications_v1';
@@ -39,6 +41,8 @@ export function pushNotification(notification) {
   notification.read = false;
   list.unshift(notification);
   _save(list);
+  const show = { success: toast.success, error: toast.error, warning: toast.warning, info: toast.info }[notification.type] || toast;
+  show(notification.message, { id: notification.id });
 }
 
 export function markAllRead() {

@@ -124,6 +124,19 @@ class PasswordHistory(models.Model):
     class Meta:
         ordering = ['created_at']
 
+
+class AuditoriaUsuario(models.Model):
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='acciones_usuarios')
+    usuario = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='auditoria_administrativa')
+    usuario_id_historico = models.PositiveBigIntegerField()
+    username_historico = models.CharField(max_length=255)
+    fecha = models.DateTimeField(auto_now_add=True)
+    accion = models.CharField(max_length=40)
+    datos = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ['-fecha', '-id']
+
 @receiver(post_save, sender=User)
 def update_has_changed_password(sender, instance, created, **kwargs):
     """

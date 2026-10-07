@@ -82,7 +82,7 @@ DB_HOST=localhost
 DB_PORT=5432
 ENVIRONMENT=LOCAL
 
-CORS_ALLOWED_ORIGINS=http://localhost:5174
+CORS_ALLOWED_ORIGINS=http://localhost:5176
 
 SIGNING_KEY=<misma_clave_jwt_que_utiliza_el_portal>
 

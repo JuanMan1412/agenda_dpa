@@ -35,6 +35,43 @@ def estado_numeracion():
             'proximo_numero': ultimo + 1, 'habilitado': bool(control and control.habilitado)}
 
 
+def puede_confirmar_numeracion(user):
+    return bool(user and user.is_active and (user.is_superuser or
+        (user.rol and user.rol.estado and user.rol.descripcion == 'ADMINISTRADOR')))
+
+
+@transaction.atomic
+def confirmar_numeracion(*, anio, ultimo_numero_libro, usuario):
+    if not puede_confirmar_numeracion(usuario):
+        raise ValueError('Se requiere un administrador local activo.')
+    year = timezone.localdate().year
+    if anio != year:
+        raise ValueError('Indicar el año actual verificado.')
+    if ultimo_numero_libro is None or ultimo_numero_libro < 0:
+        raise ValueError('Indicar el último número real del libro.')
+    _lock(f'correlativo-anual:{year}')
+    counter, _ = CorrelativoAnual.objects.get_or_create(anio=year)
+    counter = CorrelativoAnual.objects.select_for_update().get(pk=year)
+    last = Agenda.objects.filter(anio=year).aggregate(value=Max('numero'))['value'] or 0
+    if ultimo_numero_libro < max(counter.ultimo_numero, last):
+        raise ValueError('El libro informado es inferior al piso consumido. No se reutilizarán números.')
+    before = counter.ultimo_numero
+    counter.ultimo_numero = ultimo_numero_libro
+    counter.save(update_fields=['ultimo_numero'])
+    control, _ = ControlNumeracion.objects.get_or_create(pk=1)
+    control.habilitado = True
+    control.anio_validado = year
+    control.ultimo_numero_libro = ultimo_numero_libro
+    control.confirmado_por = usuario
+    control.fecha_confirmacion = timezone.now()
+    control.save()
+    AuditoriaExpediente.objects.create(usuario=usuario, accion='CONFIRMAR_CORRELATIVO',
+        datos={'anio': year, 'ultimo_anterior': before, 'ultimo_libro': ultimo_numero_libro,
+               'proximo': ultimo_numero_libro + 1},
+        motivo='Comparación explícita con el libro físico de Mesa de Entrada.')
+    return ultimo_numero_libro + 1
+
+
 @transaction.atomic
 def crear_registro(*, causante, asunto, tipo='', letra='', usuario=None, sistema='', referencia=None, idempotencia=None):
     # Orden global estable para locks multiples evita deadlocks entre referencias.
@@ -115,4 +152,21 @@ def anular_registro(registro_id, usuario, motivo):
     registro.updated_at = now
     registro.save(update_fields=['anulado', 'anulado_por', 'fecha_anulacion', 'motivo_anulacion', 'updated_at'])
     AuditoriaExpediente.objects.create(registro=registro, usuario=usuario, accion='ANULAR_REGISTRO', motivo=motivo.strip(), datos={'numero_formateado': registro.numero_formateado})
+    return registro
+
+
+@transaction.atomic
+def editar_registro(registro_id, usuario, values):
+    registro = Agenda.objects.select_for_update().get(pk=registro_id)
+    if registro.anulado:
+        raise ConflictoRegistro('Un expediente anulado no puede editarse.')
+    changes = {}
+    for field in ('causante', 'asunto', 'tipo', 'letra'):
+        if field in values and values[field] != getattr(registro, field):
+            changes[field] = {'anterior': getattr(registro, field), 'nuevo': values[field]}
+            setattr(registro, field, values[field])
+    if changes:
+        registro.updated_at = timezone.now()
+        registro.save(update_fields=[*changes, 'updated_at'])
+        AuditoriaExpediente.objects.create(registro=registro, usuario=usuario, accion='EDITAR_REGISTRO', datos=changes)
     return registro

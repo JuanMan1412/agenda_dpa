@@ -7,10 +7,12 @@ const session = {
 };
 
 async function mockProtectedApi(page, role = 'CONSULTOR') {
+  await page.route('**/api/expedientes/novedades/**', (route) => route.fulfill({ json: { cursor: 0, results: [] } }));
   await page.route('**/api/me/permisos/', (route) => route.fulfill({
-    json: { rol: role, secciones: { agenda: { ver: true, escribir: role !== 'CONSULTOR', crear_registro: role !== 'CONSULTOR', registrar_sigedoc: role !== 'CONSULTOR', anular_registro: role === 'ADMINISTRADOR' } } },
+    json: { rol: role, secciones: { agenda: { ver: true, escribir: role !== 'CONSULTOR', crear_registro: role !== 'CONSULTOR', editar_registro: role !== 'CONSULTOR', registrar_sigedoc: role !== 'CONSULTOR', anular_registro: role === 'ADMINISTRADOR' }, pendientes_sigedoc: { ver: role !== 'CONSULTOR' }, usuarios: { ver: role === 'ADMINISTRADOR' } } },
   }));
   await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => route.fulfill({ json: { count: 0, next: null, previous: null, results: [] } }));
+  await page.route(/\/api\/expedientes\/pendientes-sigedoc\/(?:\?.*)?$/, (route) => route.fulfill({ json: { count: 0, next: null, previous: null, results: [] } }));
   await page.route(/\/api\/expedientes\/resumen\/(?:\?.*)?$/, (route) => route.fulfill({ json: {
     ultimo_numero_formateado: '15234/2026', pendientes: 4, registrados_hoy: 17, anulados: 1,
     anios: [2026, 2025], origenes: ['MESA_ENTRADA', 'SISTEMA_TRAMITES'],
@@ -25,7 +27,7 @@ test('ingreso directo protegido ofrece login con redirect al receptor', async ({
   const target = new URL(href);
   expect(target.origin).toBe('http://localhost:5173');
   expect(target.pathname).toBe('/login');
-  expect(target.searchParams.get('redirect')).toBe('http://localhost:5174/portal-access');
+  expect(target.searchParams.get('redirect')).toBe('http://localhost:5176/portal-access');
   expect(target.searchParams.has('redirect_url')).toBe(false);
 });
 
@@ -43,7 +45,7 @@ test('canje unico en StrictMode, URL limpia y Bearer local en solicitudes', asyn
   });
   const permissionRequest = page.waitForRequest('**/api/me/permisos/');
   await page.goto('/portal-access#portal_token=entrada-portal');
-  await expect(page).toHaveURL('http://localhost:5174/');
+  await expect(page).toHaveURL('http://localhost:5176/');
   await expect(page.getByRole('heading', { name: 'Registro de Expedientes DPA' })).toBeVisible();
   expect(exchanges).toBe(1);
   expect(exchangeHeader).toBeUndefined();
@@ -56,7 +58,7 @@ test('error de canje limpia token de URL y no filtra credencial en pantalla', as
   await page.route('**/api/auth/portal-access/', (route) => route.fulfill({ status: 401, json: { detail: 'El token esta vencido.' } }));
   await page.goto('/portal-access?portal_token=secreto-de-prueba');
   await expect(page.getByRole('alert')).toHaveText('El token esta vencido.');
-  await expect(page).toHaveURL('http://localhost:5174/portal-access');
+  await expect(page).toHaveURL('http://localhost:5176/portal-access');
   await expect(page.getByRole('link', { name: 'Ir al portal' })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('secreto-de-prueba');
   expect(await page.evaluate(() => sessionStorage.getItem('jwtToken'))).toBeNull();
@@ -69,7 +71,7 @@ test('la query tiene prioridad sobre el fragmento', async ({ page }) => {
     return route.fulfill({ json: session });
   });
   await page.goto('/portal-access?token=query-token#portal_token=fragmento-token');
-  await expect(page).toHaveURL('http://localhost:5174/');
+  await expect(page).toHaveURL('http://localhost:5176/');
 });
 
 async function seedSession(page) {
@@ -100,7 +102,7 @@ test('403 muestra acceso denegado y conserva la sesion', async ({ page }) => {
   await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => route.fulfill({ status: 403, json: { detail: 'Sin acceso.' } }));
   await page.goto('/');
   await expect(page.getByRole('alert')).toHaveText('Tu rol no permite realizar esta operaci\u00f3n.');
-  await expect(page).toHaveURL('http://localhost:5174/');
+  await expect(page).toHaveURL('http://localhost:5176/');
   expect(await page.evaluate(() => sessionStorage.getItem('jwtToken'))).toBe(session.access);
 });
 
@@ -115,7 +117,47 @@ test('administrativo puede cargar desde el formulario', async ({ page }) => {
   await page.getByRole('textbox', { name: /Causante/ }).fill('Juan Perez');
   await page.getByRole('textbox', { name: /Asunto/ }).fill('Nota');
   await page.getByRole('button', { name: 'Registrar', exact: true }).click();
-  await expect(page.getByText('Expediente N.\u00ba 15235/2026 creado correctamente.')).toBeVisible();
+  await expect(page.locator('[data-sonner-toast][data-type="success"]')).toContainText('Expediente N.\u00ba 15235/2026 creado correctamente.');
+  await page.getByRole('button', { name: 'Ver expediente', exact: true }).click();
+  await expect(page).toHaveURL('http://localhost:5176/expedientes/1');
+});
+
+test('reserva externa actualiza tabla e indicadores y avisa sin recargar', async ({ page }) => {
+  await seedSession(page);
+  await mockProtectedApi(page, 'ADMINISTRATIVO');
+  let reserved = false;
+  let delivered = false;
+  let baseline = false;
+  const record = { id: 901, numero: 15235, anio: 2026, numero_formateado: '15235/2026',
+    origen: 'SISTEMA_TRAMITES', sistema_origen: 'TRAMITES', causante: 'Reserva automática',
+    asunto: 'Línea de ribera', estado_sigedoc: 'PENDIENTE' };
+  await page.route('**/api/expedientes/novedades/**', (route) => {
+    const cursor = new URL(route.request().url()).searchParams.get('despues_id');
+    if (cursor === null) {
+      baseline = true;
+      return route.fulfill({ json: { cursor: 900, results: [] } });
+    }
+    const results = reserved && !delivered ? [record] : [];
+    if (results.length) delivered = true;
+    return route.fulfill({ json: { cursor: delivered ? 901 : 900, results } });
+  });
+  await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => route.fulfill({ json: {
+    count: reserved ? 1 : 0, next: null, results: reserved ? [record] : [],
+  } }));
+  await page.route(/\/api\/expedientes\/resumen\/(?:\?.*)?$/, (route) => route.fulfill({ json: {
+    ultimo_numero_formateado: reserved ? '15235/2026' : '15234/2026', anios: [2026],
+    origenes: ['SISTEMA_TRAMITES'], numeracion: { habilitado: true }, pendientes: reserved ? 1 : 0,
+  } }));
+  await page.route('**/api/expedientes/901/', (route) => route.fulfill({ json: { ...record, auditoria: [] } }));
+  await page.goto('/');
+  await expect.poll(() => baseline).toBe(true);
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+  reserved = true;
+  await expect(page.locator('[data-sonner-toast]')).toContainText('Expediente N.º 15235/2026 reservado.', { timeout: 10000 });
+  await expect(page.getByRole('cell', { name: 'Reserva automática', exact: true })).toBeVisible();
+  await expect(page.locator('.stat-card').first()).toContainText('15235/2026');
+  await page.getByRole('button', { name: 'Ver expediente', exact: true }).click();
+  await expect(page).toHaveURL(/\/expedientes\/901$/);
 });
 
 test('logout limpia claves propias, conserva otras y navega al logout central', async ({ page, context }) => {
@@ -127,7 +169,7 @@ test('logout limpia claves propias, conserva otras y navega al logout central', 
   await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
   await expect(page).toHaveURL('http://localhost:5173/logout');
   const storage = await context.storageState();
-  expect(storage.origins.find((item) => item.origin === 'http://localhost:5174')?.localStorage || []).not.toContainEqual({ name: 'portal_refresh_token', value: 'legacy' });
+  expect(storage.origins.find((item) => item.origin === 'http://localhost:5176')?.localStorage || []).not.toContainEqual({ name: 'portal_refresh_token', value: 'legacy' });
   await page.goto('/');
   await expect(page).toHaveURL(/\/portal-access$/);
   expect(await page.evaluate(() => sessionStorage.getItem('jwtToken'))).toBeNull();
@@ -179,7 +221,7 @@ test('pendientes solicita orden por antiguedad', async ({ page }) => {
   await seedSession(page);
   await mockProtectedApi(page, 'ADMINISTRATIVO');
   const requests = [];
-  await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => {
+  await page.route(/\/api\/expedientes\/pendientes-sigedoc\/(?:\?.*)?$/, (route) => {
     requests.push(Object.fromEntries(new URL(route.request().url()).searchParams));
     return route.fulfill({ json: { count: 1, next: null, results: [expediente] } });
   });

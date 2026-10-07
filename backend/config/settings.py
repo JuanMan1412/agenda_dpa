@@ -11,6 +11,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -54,7 +55,7 @@ ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1' if DEBUG else ''
 
 INSTALLED_APPS = [
     # Django
-    'django.contrib.admin',
+    'config.admin.RegistroAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -192,6 +193,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = env_bool('CORS_ALLOW_CREDENTIALS', True)
+CORS_ALLOW_HEADERS = (*default_headers, 'idempotency-key')
 
 # ---------------------------------------------------------
 # DJANGO REST FRAMEWORK

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Agenda, AuditoriaExpediente
+from roles.permissions import get_user_permissions
 
 
 def nombre_usuario(user):
@@ -16,6 +17,14 @@ class AuditoriaSerializer(serializers.ModelSerializer):
 
 
 class AgendaSerializer(serializers.ModelSerializer):
+    acciones_disponibles = serializers.SerializerMethodField()
+
+    def get_acciones_disponibles(self, obj):
+        request = self.context.get('request')
+        access = get_user_permissions(request.user)[1]['agenda'] if request and request.user and request.user.is_authenticated else {}
+        return {'ver': bool(access.get('ver')), 'editar': bool(access.get('editar_registro') and not obj.anulado),
+            'anular': bool(access.get('anular_registro') and not obj.anulado),
+            'registrar_sigedoc': bool(access.get('registrar_sigedoc') and not obj.anulado and obj.estado_sigedoc == Agenda.PENDIENTE)}
     numero_formateado = serializers.ReadOnlyField()
     fecha_registro = serializers.DateTimeField(source='fecha_hora', read_only=True)
     creado_por_nombre = serializers.SerializerMethodField()
@@ -30,7 +39,7 @@ class AgendaSerializer(serializers.ModelSerializer):
             'causante', 'asunto', 'tipo', 'origen', 'sistema_origen', 'referencia_externa', 'referencia_idempotencia',
             'estado_sigedoc', 'fecha_registro_sigedoc', 'registrado_sigedoc_por', 'registrado_sigedoc_por_nombre',
             'creado_por', 'creado_por_nombre', 'anulado', 'fecha_anulacion', 'anulado_por', 'anulado_por_nombre',
-            'motivo_anulacion', 'created_at', 'updated_at']
+            'motivo_anulacion', 'created_at', 'updated_at', 'acciones_disponibles']
         read_only_fields = fields
 
 

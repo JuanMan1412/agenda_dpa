@@ -39,6 +39,18 @@ class UserChangeForm(forms.ModelForm):
         del admin de la clave (admin's disabled password hash display field)
     """
     password = ReadOnlyPasswordHashField()
+
+    def clean(self):
+        data = super().clean()
+        if self.instance.pk:
+            from usuarios.administration import protect_last_admin
+            from rest_framework.exceptions import ValidationError as ApiValidationError
+            previous = User.objects.get(pk=self.instance.pk)
+            try:
+                protect_last_admin(previous, data)
+            except ApiValidationError as exc:
+                raise ValidationError(' '.join(str(value) for value in exc.detail))
+        return data
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

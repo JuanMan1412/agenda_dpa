@@ -2,7 +2,7 @@
 
 La aplicación evolucionó a **Registro de Expedientes DPA**. La autenticación descrita aquí se conserva; el modelo administrativo, los permisos por acción y los contratos actuales se documentan en [REGISTRO_EXPEDIENTES.md](REGISTRO_EXPEDIENTES.md).
 
-Se implementó el contrato de `REPLICAR_AUTENTICACION_PORTAL.md` para la agenda. El frontend de Agenda usa `http://localhost:5174`, su backend `http://localhost:8000`, el frontend central `http://localhost:5173` y la API central `http://localhost:8001/api`.
+Se implementó el contrato de `REPLICAR_AUTENTICACION_PORTAL.md` para la agenda. El frontend de Agenda usa `http://localhost:5176`, su backend `http://localhost:8000`, el frontend central `http://localhost:5173` y la API central `http://localhost:8001/api`.
 
 ## Configuración y arranque
 
@@ -28,7 +28,7 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-Vite utiliza el puerto 5174 con `strictPort`: no cambia silenciosamente a otro origen incompatible con CORS. Reiniciar Vite después de cambiar su `.env`.
+Vite utiliza el puerto 5176 con `strictPort`: no cambia silenciosamente a otro origen incompatible con CORS. Reiniciar Vite después de cambiar su `.env`.
 
 ## Usuarios y permisos locales
 
@@ -85,7 +85,7 @@ Los settings de transición se usan únicamente para esa migración; no sirven p
 
 ## Registro en el portal y despliegue
 
-La contraparte central debe tener el sistema con código **agenda**, URL `http://localhost:5174` y acceso asignado al usuario/oficina. Su tarjeta debe lanzar `/portal-access#portal_token=...`; si usa `SYSTEM_LAUNCH_OPTIONS_BY_CODE`, configurar `pathName: '/portal-access'` y `forceTokenLaunch: true` para `agenda`. No duplicar la ruta en la URL guardada.
+La contraparte central debe tener el sistema con código **agenda**, URL `http://localhost:5176` y acceso asignado al usuario/oficina. Su tarjeta debe lanzar `/portal-access#portal_token=...`; si usa `SYSTEM_LAUNCH_OPTIONS_BY_CODE`, configurar `pathName: '/portal-access'` y `forceTokenLaunch: true` para `agenda`. No duplicar la ruta en la URL guardada.
 
 No se modificó el proyecto central desde este repositorio. La configuración de su registro y su revocación de refresh requieren comprobarse con el portal real. En producción, el servidor del frontend debe servir `index.html` al recargar `/portal-access`; esta implementación asume publicación en la raíz del dominio, no en un subdirectorio.
 

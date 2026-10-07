@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import AuthenticationHelper from "../../shared/helpers/authenticationHelper";
 import { buildPortalLogoutHref } from "../../shared/helpers/portalUrls";
 import { usePermissions } from "../../contexts/usePermissions";
+import logoDpa from "../../images/logo.png";
 
 export default function Topbar() {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -29,7 +30,7 @@ export default function Topbar() {
   }
 
   return <header className="topbar">
-    <div className="brand"><span className="brand-mark">DPA</span><strong>Registro de Expedientes</strong></div>
+    <div className="brand"><img className="brand-logo" src={logoDpa} alt="DPA" /><strong>Registro de Expedientes</strong></div>
     <div className="profile">
       <button type="button" onClick={() => setProfileOpen((open) => !open)} aria-expanded={profileOpen} aria-controls="profile-menu">{name} ▾</button>
       {profileOpen && <div id="profile-menu" className="profile-menu">

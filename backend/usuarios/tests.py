@@ -23,6 +23,9 @@ User = get_user_model()
 
 
 class PortalAuthenticationTests(APITestCase):
+    def setUp(self):
+        ControlNumeracion.objects.get_or_create(pk=1)
+
     def token(self, **claims):
         now = datetime.now(timezone.utc)
         payload = {
@@ -147,11 +150,11 @@ class PortalAuthenticationTests(APITestCase):
         self.assertFalse(User.objects.get().is_active)
 
     @override_settings(PORTAL_AUTO_ENABLE_USERS=True)
-    def test_inactive_account_is_reactivated_when_enabled(self):
+    def test_administrative_deactivation_cannot_be_overridden_by_portal(self):
         self.exchange()
         User.objects.update(is_active=False)
-        self.assertEqual(self.exchange().status_code, 200)
-        self.assertTrue(User.objects.get().is_active)
+        self.assertEqual(self.exchange().status_code, 403)
+        self.assertFalse(User.objects.get().is_active)
 
     @override_settings(PORTAL_AUTO_ENABLE_USERS=False)
     def test_new_account_is_active_even_without_reactivation(self):
@@ -253,7 +256,7 @@ class LegacyUserMigrationTests(APITestCase):
 
 class AdminPagesTests(APITestCase):
     def setUp(self):
-        self.admin = User.objects.create_superuser(username='admin.test', password='test-password')
+        self.admin = User.objects.create_superuser(username='admin.test', password='test-password', rol=Rol.objects.get(descripcion='ADMINISTRADOR'))
         self.client.force_login(self.admin)
 
     def test_user_change_page_and_password_link_work(self):

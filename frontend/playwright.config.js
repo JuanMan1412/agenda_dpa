@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: 'http://localhost:5176',
     browserName: 'chromium',
     launchOptions: {
       ...(process.platform === 'win32' ? { channel: 'chrome' } : {}),
@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run dev -- --host localhost',
-    url: 'http://localhost:5174',
+    url: 'http://localhost:5176',
     reuseExistingServer: !process.env.CI,
   },
 });

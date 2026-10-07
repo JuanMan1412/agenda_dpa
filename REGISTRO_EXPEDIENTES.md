@@ -48,7 +48,7 @@ Restricciones: `UNIQUE(numero, anio)`, número positivo, referencia única por s
 - `ControlNumeracion`: control único de habilitación, año validado, último número físico confirmado, usuario y fecha de confirmación.
 - `AuditoriaExpediente`: expediente, usuario o sistema, fecha, acción, datos relevantes y motivo. Acciones principales: `CREAR_REGISTRO`, `REGISTRAR_SIGEDOC`, `ANULAR_REGISTRO`. También se registran `MIGRAR_HISTORICO` y `CONFIRMAR_CORRELATIVO`.
 
-Los usuarios de auditoría están protegidos contra borrado mediante relaciones `PROTECT`. El admin permite consultar los registros, contadores y auditoría; no permite editar números, borrar expedientes o modificar el contador.
+Los usuarios de auditoría están protegidos contra borrado mediante relaciones `PROTECT`. El admin permite consultar los registros, contadores y auditoría; no permite editar números ni borrar expedientes. En **Agenda → Control numeración** (`/admin/agenda/controlnumeracion/`), un administrador con acceso al admin puede confirmar el último número del libro físico y habilitar las altas. Para comenzar en 15235 debe ingresar 15234 y marcar la confirmación. La operación queda auditada, valida el año actual y no permite retroceder por debajo del piso consumido. El comando de consola sigue disponible y usa las mismas validaciones.
 
 ## Correlativo, concurrencia e idempotencia
 
@@ -197,7 +197,7 @@ En despliegue:
 6. Configurar hosts/CORS y credenciales del Portal y de Trámites mediante los `.env.example`.
 7. Comparar el contador con el libro y confirmar expresamente antes de habilitar nuevas asignaciones.
 
-Backend de desarrollo: `manage.py runserver 8000`. Frontend: `npm.cmd run dev` desde `frontend`, puerto 5174. El código del Portal continúa siendo `agenda`; un cambio del código central requiere coordinar su registro y las variables de ambos proyectos.
+Backend de desarrollo: `manage.py runserver 8000`. Frontend: `npm.cmd run dev` desde `frontend`, puerto 5176. El código del Portal continúa siendo `agenda`; un cambio del código central requiere coordinar su registro y las variables de ambos proyectos.
 
 ## Verificación realizada
 

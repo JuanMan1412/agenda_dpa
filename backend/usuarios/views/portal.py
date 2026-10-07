@@ -79,6 +79,8 @@ class PortalAccessView(APIView):
             raise serializers.ValidationError({'detail': 'El nombre del portal no es valido.'})
         try:
             with transaction.atomic():
+                # Mismo orden de bloqueo que la administración local.
+                Rol.objects.select_for_update().filter(descripcion='ADMINISTRADOR').first()
                 user = User.objects.select_for_update().filter(portal_user_id=portal_id).first()
                 username_owner = User.objects.select_for_update().filter(username=username).first()
                 if user and username_owner and user.pk != username_owner.pk:
@@ -94,9 +96,7 @@ class PortalAccessView(APIView):
                     user = User(username=username, is_active=True)
                     user.set_unusable_password()
                 if not user.is_active:
-                    if not settings.PORTAL_AUTO_ENABLE_USERS:
-                        raise PermissionDenied('El usuario local se encuentra inactivo.')
-                    user.is_active = True
+                    raise PermissionDenied('El usuario local se encuentra inactivo.')
                 if user.rol_id is None:
                     user.rol = Rol.objects.filter(descripcion=settings.PORTAL_DEFAULT_ROLE, estado=True).first()
                     if user.rol is None:

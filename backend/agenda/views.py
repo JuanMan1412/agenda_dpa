@@ -6,11 +6,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from roles.permissions import AgendaPermission
+from roles.permissions import AgendaPermission, CanManageSigedoc
 from .authentication import EsAplicacionExterna, ExternoApiKeyAuthentication
 from .models import Agenda
 from .serializers import AgendaSerializer, DetalleSerializer, CrearSerializer, ReservaSerializer, AnularSerializer, ConfirmacionSerializer
-from .services import cargar_manual, reservar_automatico, registrar_sigedoc, anular_registro, estado_numeracion
+from .services import cargar_manual, reservar_automatico, registrar_sigedoc, anular_registro, estado_numeracion, editar_registro
 
 
 def registros():
@@ -71,6 +71,17 @@ class AgendaListView(generics.ListAPIView):
 class RegistroListView(AgendaListView):
     pagination_class = RegistroPagination
 
+    def post(self, request):
+        return AgendaCargaManualView.post(self, request)
+
+
+class PendientesSigedocView(RegistroListView):
+    permission_classes = [CanManageSigedoc]
+    http_method_names = ['get', 'head', 'options']
+
+    def get_queryset(self):
+        return filtrar(registros().filter(anulado=False, estado_sigedoc=Agenda.PENDIENTE), self.request.query_params).order_by('fecha_hora', 'id')
+
 
 class AgendaCargaManualView(APIView):
     permission_classes = [permissions.IsAuthenticated, AgendaPermission]
@@ -79,13 +90,32 @@ class AgendaCargaManualView(APIView):
         serializer = CrearSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         registro, created = cargar_manual(usuario=request.user, idempotencia=idempotency(request), **serializer.validated_data)
-        return Response(AgendaSerializer(registro).data, status=201 if created else 200)
+        return Response(AgendaSerializer(registro, context={'request': request}).data, status=201 if created else 200)
 
 
 class RegistroDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated, AgendaPermission]
     serializer_class = DetalleSerializer
     queryset = registros().prefetch_related('auditoria__usuario')
+
+    def patch(self, request, pk):
+        serializer = CrearSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        get_object_or_404(Agenda, pk=pk)
+        registro = editar_registro(pk, request.user, serializer.validated_data)
+        return Response(DetalleSerializer(registro, context={'request': request}).data)
+
+    def put(self, request, pk):
+        serializer = CrearSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        get_object_or_404(Agenda, pk=pk)
+        registro = editar_registro(pk, request.user, serializer.validated_data)
+        return Response(DetalleSerializer(registro, context={'request': request}).data)
+
+    def get_permissions(self):
+        if self.request.method in ('PATCH', 'PUT'):
+            self.operacion = 'editar_registro'
+        return super().get_permissions()
 
 
 class RegistrarSigedocView(APIView):
@@ -96,7 +126,7 @@ class RegistrarSigedocView(APIView):
         serializer.is_valid(raise_exception=True)
         get_object_or_404(Agenda, pk=pk)
         registro = registrar_sigedoc(pk, request.user)
-        return Response(DetalleSerializer(registro).data)
+        return Response(DetalleSerializer(registro, context={'request': request}).data)
 
 
 class AnularRegistroView(APIView):
@@ -107,7 +137,7 @@ class AnularRegistroView(APIView):
         serializer.is_valid(raise_exception=True)
         get_object_or_404(Agenda, pk=pk)
         registro = anular_registro(pk, request.user, serializer.validated_data['motivo'])
-        return Response(DetalleSerializer(registro).data)
+        return Response(DetalleSerializer(registro, context={'request': request}).data)
 
 
 class ResumenView(APIView):
@@ -128,6 +158,19 @@ class ResumenView(APIView):
             'anios': list(Agenda.objects.order_by('-anio').values_list('anio', flat=True).distinct()),
             'origenes': list(Agenda.objects.order_by('origen').values_list('origen', flat=True).distinct()),
             'numeracion': estado_numeracion()})
+
+
+class NovedadesExpedientesView(APIView):
+    permission_classes = [permissions.IsAuthenticated, AgendaPermission]
+
+    def get(self, request):
+        after = request.query_params.get('despues_id')
+        if after is None:
+            return Response({'cursor': Agenda.objects.aggregate(value=Max('id'))['value'] or 0, 'results': []})
+        cursor = serializers.IntegerField(min_value=0).run_validation(after)
+        nuevos = list(registros().filter(id__gt=cursor).exclude(sistema_origen='').order_by('id')[:100])
+        return Response({'cursor': nuevos[-1].id if nuevos else cursor,
+            'results': AgendaSerializer(nuevos, many=True, context={'request': request}).data})
 
 
 class AgendaReservaExternaView(APIView):
