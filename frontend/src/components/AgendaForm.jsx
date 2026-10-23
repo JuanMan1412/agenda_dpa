@@ -55,7 +55,7 @@ export default function AgendaForm({ onRegistroCreado, onCancel, registro }) {
     <p className="muted">{registro ? 'La numeración, el origen y la categoría se conservan.' : 'La fecha, la categoría y el número se asignan automáticamente.'}</p>
     <div className="dialog-actions">
       <button type="button" className="secondary" onClick={onCancel} disabled={enviando}>Cancelar</button>
-      <button type="submit" className="primary" disabled={enviando}>{enviando ? 'Guardando…' : registro ? 'Guardar cambios' : 'Registrar'}</button>
+      <button type="submit" className="primary" disabled={enviando}>{enviando ? 'Guardando…' : registro ? 'Guardar cambios' : 'Guardar registro'}</button>
     </div>
   </form>;
 }

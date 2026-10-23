@@ -43,7 +43,7 @@ export default function UsuariosPage() {
     finally { pending.current = false; setBusy(false); }
   }
   const editing = dialog && ['nuevo', 'editar'].includes(dialog.type);
-  return <main className="registro-page">
+  return <main className="registro-page usuarios-page">
     <div className="page-heading"><div><p className="eyebrow">Administración</p><h1>Usuarios</h1><p className="muted">Administrá los usuarios y permisos de acceso al Registro de Expedientes DPA.</p></div><button className="primary" onClick={() => open('nuevo')}>+ Nuevo usuario</button></div>
     <p className="notice">El ingreso y la identidad se administran en Portal DPA. El alta prepara el acceso local para un usuario existente del Portal; no crea una cuenta central ni una contraseña.</p>
     <section className="records-panel" aria-label="Usuarios">

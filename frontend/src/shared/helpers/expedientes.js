@@ -13,13 +13,6 @@ export function origen(value) {
   return value?.replace(/^SISTEMA_/, 'Sistema ').replaceAll('_', ' ') || '—';
 }
 
-export function tiempoPendiente(value, now = Date.now()) {
-  const minutes = Math.max(0, Math.floor((now - new Date(value).getTime()) / 60000));
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  return days ? `${days} d ${hours} h` : `${hours} h ${minutes % 60} min`;
-}
-
 export function errorMessage(error, fallback = 'No se pudo completar la operación.') {
   if (error?.response?.status === 403) return 'Tu rol no permite realizar esta operación.';
   const data = error?.response?.data;

@@ -12,7 +12,6 @@ async function mockProtectedApi(page, role = 'CONSULTOR') {
     json: { rol: role, secciones: { agenda: { ver: true, escribir: role !== 'CONSULTOR', crear_registro: role !== 'CONSULTOR', editar_registro: role !== 'CONSULTOR', registrar_sigedoc: role !== 'CONSULTOR', anular_registro: role === 'ADMINISTRADOR' }, pendientes_sigedoc: { ver: role !== 'CONSULTOR' }, usuarios: { ver: role === 'ADMINISTRADOR' } } },
   }));
   await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => route.fulfill({ json: { count: 0, next: null, previous: null, results: [] } }));
-  await page.route(/\/api\/expedientes\/pendientes-sigedoc\/(?:\?.*)?$/, (route) => route.fulfill({ json: { count: 0, next: null, previous: null, results: [] } }));
   await page.route(/\/api\/expedientes\/resumen\/(?:\?.*)?$/, (route) => route.fulfill({ json: {
     ultimo_numero_formateado: '15234/2026', pendientes: 4, registrados_hoy: 17, anulados: 1,
     anios: [2026, 2025], origenes: ['MESA_ENTRADA', 'SISTEMA_TRAMITES'],
@@ -110,15 +109,16 @@ test('administrativo puede cargar desde el formulario', async ({ page }) => {
   await seedSession(page);
   await mockProtectedApi(page, 'ADMINISTRATIVO');
   await page.route('**/api/expedientes/manual/', (route) => route.fulfill({
-    status: 201, json: { id: 1, numero: 15235, anio: 2026, numero_formateado: '15235/2026', origen: 'MESA_ENTRADA', estado_sigedoc: 'PENDIENTE', fecha_hora: '2026-10-05T12:00:00Z' },
+    status: 201, json: { id: 1, numero: 15235, anio: 2026, letra: 'ED', numero_formateado: '15235/325-ED-2026', origen: 'MESA_ENTRADA', estado_sigedoc: 'PENDIENTE', fecha_hora: '2026-10-05T12:00:00Z' },
   }));
   await page.goto('/');
-  await page.getByRole('button', { name: '+ Nuevo registro' }).click();
+  await page.getByRole('button', { name: 'Nuevo registro' }).click();
+  await page.getByLabel('Letra *').fill('ED');
   await page.getByRole('textbox', { name: /Causante/ }).fill('Juan Perez');
   await page.getByRole('textbox', { name: /Asunto/ }).fill('Nota');
-  await page.getByRole('button', { name: 'Registrar', exact: true }).click();
-  await expect(page.locator('[data-sonner-toast][data-type="success"]')).toContainText('Expediente N.\u00ba 15235/2026 creado correctamente.');
-  await page.getByRole('button', { name: 'Ver expediente', exact: true }).click();
+  await page.getByRole('button', { name: 'Guardar registro' }).click();
+  await expect(page.locator('[data-sonner-toast][data-type="success"]')).toContainText('Expediente N.\u00ba 15235/325-ED-2026 creado correctamente.');
+  await page.getByRole('button', { name: /Ver expediente/ }).click();
   await expect(page).toHaveURL('http://localhost:5176/expedientes/1');
 });
 
@@ -186,17 +186,54 @@ const expediente = {
   auditoria: [{ id: 1, fecha_hora: '2026-10-05T12:42:00Z', accion: 'CREAR_REGISTRO', sistema: 'TRAMITES' }],
 };
 
+test('la accion de la tabla registra y actualiza fila y metricas', async ({ page }) => {
+  await seedSession(page);
+  await mockProtectedApi(page, 'ADMINISTRATIVO');
+  let registered = false;
+  const registro = { ...expediente, acciones_disponibles: { editar: true, registrar_sigedoc: true } };
+  await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => route.fulfill({ json: { count: 1, next: null, results: [{ ...registro, estado_sigedoc: registered ? 'REGISTRADO' : 'PENDIENTE' }] } }));
+  await page.route(/\/api\/expedientes\/resumen\/(?:\?.*)?$/, (route) => route.fulfill({ json: { ultimo_numero_formateado: expediente.numero_formateado, pendientes: registered ? 3 : 4, registrados_hoy: registered ? 18 : 17, anulados: 1, anios: [2026], origenes: ['SISTEMA_TRAMITES'], numeracion: { habilitado: true } } }));
+  await page.route('**/api/expedientes/837/registrar-sigedoc/', (route) => {
+    expect(route.request().postDataJSON()).toEqual({ confirmar: true });
+    registered = true;
+    return route.fulfill({ json: { ...registro, estado_sigedoc: 'REGISTRADO', fecha_registro_sigedoc: '2026-10-05T14:14:00Z' } });
+  });
+  await page.goto('/');
+  const register = page.getByRole('button', { name: /Registrar 15235\/2026 en SIGEDoc/ });
+  await register.click();
+  await expect(page.getByRole('dialog')).toContainText('15235/2026');
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  await expect(page.locator('.status-badge')).toHaveText('Registrado');
+  await expect(page.getByRole('button', { name: /Registrar 15235\/2026 en SIGEDoc/ })).toHaveCount(0);
+  await expect(page.locator('.stat-card').nth(1)).toContainText('3');
+  await expect(page.locator('.stat-card').nth(2)).toContainText('18');
+  await expect(page.locator('[data-sonner-toast][data-type="success"]')).toContainText('15235/2026');
+});
+
+test('error al registrar mantiene el expediente pendiente', async ({ page }) => {
+  await seedSession(page);
+  await mockProtectedApi(page, 'ADMINISTRATIVO');
+  await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => route.fulfill({ json: { count: 1, next: null, results: [{ ...expediente, acciones_disponibles: { editar: true, registrar_sigedoc: true } }] } }));
+  await page.route('**/api/expedientes/837/registrar-sigedoc/', (route) => route.fulfill({ status: 409, json: { detail: 'El expediente ya no está pendiente.' } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: /Registrar 15235\/2026 en SIGEDoc/ }).click();
+  await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
+  await expect(page.locator('.status-badge')).toHaveText('Pendiente');
+  await expect(page.getByRole('button', { name: /Registrar 15235\/2026 en SIGEDoc/ })).toBeVisible();
+  await expect(page.locator('[data-sonner-toast][data-type="error"]')).toContainText('El expediente ya no está pendiente.');
+});
+
 test('bloqueo del correlativo impide nuevas asignaciones en pantalla', async ({ page }) => {
   await seedSession(page);
   await mockProtectedApi(page, 'ADMINISTRATIVO');
   await page.route(/\/api\/expedientes\/resumen\/(?:\?.*)?$/, (route) => route.fulfill({ json: {
     pendientes: 1, registrados_hoy: 0, anulados: 0, anios: [2026], origenes: ['MESA_ENTRADA'],
-    numeracion: { habilitado: false, anio: 2026, ultimo_numero_base: 1, proximo_numero: 2 },
+    numeracion: { habilitado: false, anio: 2026, ultimo_numero_base: 1, proximo_numero: 2, proximo_numero_formateado: '0002/325-[LETRA]-2026' },
   } }));
   await page.goto('/');
   await expect(page.getByText('Nuevas asignaciones bloqueadas')).toBeVisible();
-  await expect(page.getByRole('button', { name: '+ Nuevo registro' })).toBeDisabled();
-  await expect(page.getByText('2/2026', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nuevo registro' })).toBeDisabled();
+  await expect(page.getByText('0002/325-[LETRA]-2026', { exact: true })).toBeVisible();
 });
 
 test('busqueda y filtros envian numero, anio, estado y origen al backend', async ({ page }) => {
@@ -208,27 +245,35 @@ test('busqueda y filtros envian numero, anio, estado y origen al backend', async
     return route.fulfill({ json: { count: 1, next: null, results: [expediente] } });
   });
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Buscar expedientes' }).fill('15235');
-  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  const search = page.getByRole('searchbox', { name: 'Buscar expedientes' });
+  for (const term of ['15235', 'ED', 'Juan Pérez', 'Línea de Ribera']) {
+    await search.fill(term);
+    await expect.poll(() => requests.some((item) => item.q === term)).toBe(true);
+  }
+  await search.fill('15235');
+  await expect.poll(() => requests.some((item) => item.q === '15235')).toBe(true);
   await page.getByLabel('Año', { exact: true }).selectOption('2026');
   await page.getByLabel('Origen', { exact: true }).selectOption('SISTEMA_TRAMITES');
   await page.getByRole('button', { name: 'Pendientes SIGEDoc', exact: true }).click();
   await expect.poll(() => requests.some((item) => item.q === '15235' && item.anio === '2026' && item.estado === 'PENDIENTE' && item.origen === 'SISTEMA_TRAMITES')).toBe(true);
   await expect(page.getByRole('link', { name: '15235/2026', exact: true })).toBeVisible();
+  await search.fill('');
+  await expect.poll(() => requests.some((item) => item.q === '' && item.anio === '2026' && item.estado === 'PENDIENTE' && item.origen === 'SISTEMA_TRAMITES')).toBe(true);
 });
 
-test('pendientes solicita orden por antiguedad', async ({ page }) => {
+test('tarjeta de pendientes activa el filtro en el registro principal', async ({ page }) => {
   await seedSession(page);
   await mockProtectedApi(page, 'ADMINISTRATIVO');
   const requests = [];
-  await page.route(/\/api\/expedientes\/pendientes-sigedoc\/(?:\?.*)?$/, (route) => {
+  await page.route(/\/api\/expedientes\/(?:\?.*)?$/, (route) => {
     requests.push(Object.fromEntries(new URL(route.request().url()).searchParams));
     return route.fulfill({ json: { count: 1, next: null, results: [expediente] } });
   });
-  await page.goto('/pendientes-sigedoc');
-  await expect(page.getByRole('heading', { name: 'Pendientes SIGEDoc', exact: true })).toBeVisible();
-  await expect.poll(() => requests.some((item) => item.estado === 'PENDIENTE' && item.orden === 'fecha_asc')).toBe(true);
-  await expect(page.getByRole('columnheader', { name: 'Tiempo pendiente' })).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name: 'Pendientes SIGEDoc' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Filtrar expedientes pendientes SIGEDoc' }).click();
+  await expect(page.getByRole('button', { name: 'Pendientes SIGEDoc', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => requests.some((item) => item.estado === 'PENDIENTE')).toBe(true);
 });
 
 test('SIGEDoc exige confirmacion y conserva el mismo numero', async ({ page }) => {
@@ -282,5 +327,8 @@ test('listado del registro muestra los datos y estados administrativos', async (
   await page.goto('/');
   await expect(page.getByRole('cell', { name: 'Juan Pérez' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Anulado', exact: true })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: '15235/2026' }).getByRole('button', { name: /Registrar/ })).toHaveCount(1);
+  await expect(page.getByRole('row').filter({ hasText: '15234/2026' }).getByRole('button', { name: /Registrar/ })).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: '15233/2026' }).getByRole('button', { name: /Registrar/ })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('registro-expedientes.png'), fullPage: true });
 });

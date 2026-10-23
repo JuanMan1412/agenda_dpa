@@ -11,11 +11,10 @@ import { usePermissions } from './contexts/usePermissions';
 
 function RegistroLayout() {
   const { canViewSection } = usePermissions();
-  return <><ReservasNotifications /><Topbar /><nav className="main-nav" aria-label="Secciones">
+  return <div className="app-shell"><ReservasNotifications /><Topbar /><nav className="main-nav" aria-label="Secciones">
     <NavLink to="/" end>Registro de expedientes</NavLink>
-    {canViewSection('pendientes_sigedoc') && <NavLink to="/pendientes-sigedoc">Pendientes SIGEDoc</NavLink>}
     {canViewSection('usuarios') && <NavLink to="/usuarios">Administración · Usuarios</NavLink>}
-  </nav><Outlet /></>;
+  </nav><Outlet /></div>;
 }
 export default function App() {
   return <Routes>
@@ -23,7 +22,6 @@ export default function App() {
     <Route element={<ProtectedRoute />}>
       <Route element={<SectionRoute section="agenda"><RegistroLayout /></SectionRoute>}>
         <Route path="/" element={<RegistroPage key="registro" />} />
-        <Route path="/pendientes-sigedoc" element={<SectionRoute section="pendientes_sigedoc"><RegistroPage key="pendientes" pendientes /></SectionRoute>} />
         <Route path="/usuarios" element={<SectionRoute section="usuarios"><UsuariosPage /></SectionRoute>} />
         <Route path="/expedientes/:id" element={<ExpedienteDetail />} />
         <Route path="*" element={<main className="registro-page"><h1>Página no encontrada</h1></main>} />

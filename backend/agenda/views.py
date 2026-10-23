@@ -39,7 +39,7 @@ def filtrar(queryset, params):
     query = data.get('q', '').strip()
     if query:
         import re
-        official = re.fullmatch(r'(\d{1,10})/([A-Za-z0-9]{1,20})-([A-Za-z]{1,10})-(\d{4})', query)
+        official = re.fullmatch(r'(\d{1,10})/([A-Za-z0-9]{1,20})-([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{1,10})-(\d{4})', query)
         legacy = re.fullmatch(r'(\d{1,10})/(\d{4})', query)
         if official:
             queryset = queryset.filter(numero=int(official.group(1)), codigo_reparticion__iexact=official.group(2),

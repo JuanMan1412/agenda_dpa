@@ -159,6 +159,8 @@ class RegistroTests(APITestCase):
         self.assertEqual(summary['pendientes'], 2)
         self.assertIn(timezone.localdate().year, summary['anios'])
         self.assertEqual(self.client.get(reverse('agenda-listar')).status_code, 200)
+        spanish_letter = self.manual(letra='Ñ', causante='Ruben', asunto='Otro').data
+        self.assertEqual(self.client.get(base, {'q': spanish_letter['numero_formateado']}).data['count'], 1)
 
     def test_pending_oldest_first_excludes_annulled(self):
         first = self.manual().data
