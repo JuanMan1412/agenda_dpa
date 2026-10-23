@@ -43,7 +43,7 @@ export default function RegistroPage({ pendientes = false }) {
 
     {numeracion && !numeracion.habilitado && <div className="notice warning" role="status">
       <strong>Nuevas asignaciones bloqueadas</strong>
-      <p>Antes de habilitarlas se debe comparar el correlativo con el libro físico. Último en base: {numeracion.ultimo_numero_base ?? 'sin registros'}/{numeracion.anio}. Próximo propuesto: <strong>{numeracion.proximo_numero}/{numeracion.anio}</strong>.</p>
+      <p>Antes de habilitarlas se debe comparar el correlativo con el libro físico. Último número registrado: {summary.data?.ultimo_numero_formateado || 'sin registros'}. Próximo propuesto: <strong>{numeracion.proximo_numero_formateado}</strong>.</p>
     </div>}
 
     {!pendientes && <div className="stats-grid">
@@ -57,7 +57,7 @@ export default function RegistroPage({ pendientes = false }) {
       <div className="filter-bar">
         <form className="search-form" onSubmit={(event) => { event.preventDefault(); change('q', search.trim()); }}>
           <label className="sr-only" htmlFor="buscar-expedientes">Buscar expedientes</label>
-          <input id="buscar-expedientes" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Número, causante, asunto o referencia…" />
+          <input id="buscar-expedientes" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Expediente completo, número, letra, causante o asunto…" />
           <button type="submit" className="secondary">Buscar</button>
         </form>
         <label>Año<select aria-label="Año" value={filters.anio} onChange={(event) => change('anio', event.target.value)}><option value="">Todos los años</option>{summary.data?.anios.map((year) => <option key={year} value={year}>{year}</option>)}</select></label>

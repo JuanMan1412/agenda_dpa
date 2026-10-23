@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
+from django.conf import settings
+from agenda.models import formatear_numero_expediente
 
 from agenda.services import confirmar_numeracion, estado_numeracion
 
@@ -16,7 +18,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         state = estado_numeracion()
         year = state['anio']
-        self.stdout.write(f"Anio: {year}; ultimo en base: {state['ultimo_numero_base']}; ultimo consumido: {state['ultimo_numero_consumido']}; proximo: {state['proximo_numero']}; habilitado: {state['habilitado']}")
+        self.stdout.write(f"Anio: {year}; ultimo en base: {state['ultimo_numero_base']}; ultimo consumido: {state['ultimo_numero_consumido']}; proximo: {state['proximo_numero_formateado']}; habilitado: {state['habilitado']}")
         if not options['confirmar']:
             self.stdout.write('Solo consulta. Comparar con el libro fisico antes de confirmar.')
             return
@@ -27,4 +29,5 @@ class Command(BaseCommand):
                 ultimo_numero_libro=options['ultimo_numero_libro'], usuario=user)
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
-        self.stdout.write(self.style.SUCCESS(f'Asignaciones habilitadas. Proximo expediente: {next_number}/{year}.'))
+        formatted = formatear_numero_expediente(next_number, settings.EXPEDIENTE_CODIGO_REPARTICION, '[LETRA]', year)
+        self.stdout.write(self.style.SUCCESS(f'Asignaciones habilitadas. Proximo expediente: {formatted}.'))

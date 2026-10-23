@@ -60,7 +60,8 @@ class ControlNumeracionAdmin(ConsultaAdmin):
             except ValueError as exc:
                 form.add_error(None, str(exc))
             else:
-                self.message_user(request, f'Asignaciones habilitadas. Próximo expediente: {next_number}/{state["anio"]}.')
+                state = estado_numeracion()
+                self.message_user(request, f'Asignaciones habilitadas. Próximo expediente: {state["proximo_numero_formateado"]}.')
                 return redirect(reverse('admin:agenda_controlnumeracion_changelist'))
         context = {**self.admin_site.each_context(request), 'opts': self.model._meta,
             'title': 'Configurar numeración de expedientes', 'form': form, 'numeracion': state,

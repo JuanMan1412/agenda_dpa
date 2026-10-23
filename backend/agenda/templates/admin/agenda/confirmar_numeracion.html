@@ -8,7 +8,7 @@
   <p>Estado: {% if numeracion.habilitado %}habilitada{% else %}bloqueada{% endif %}.</p>
   <p>Último número en base: {{ numeracion.ultimo_numero_base|default_if_none:"sin registros" }}.
      Último número consumido: {{ numeracion.ultimo_numero_consumido }}.</p>
-  <p>Próximo expediente actual: <strong>{{ numeracion.proximo_numero }}/{{ numeracion.anio }}</strong>.</p>
+  <p>Próximo expediente actual: <strong>{{ numeracion.proximo_numero_formateado }}</strong>.</p>
   {% if control.fecha_confirmacion %}<p>Última confirmación: {{ control.fecha_confirmacion }} por {{ control.confirmado_por }}.</p>{% endif %}
 </div>
 <form method="post">

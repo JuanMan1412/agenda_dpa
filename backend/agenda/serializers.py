@@ -35,7 +35,7 @@ class AgendaSerializer(serializers.ModelSerializer):
     def get_anulado_por_nombre(self, obj): return nombre_usuario(obj.anulado_por)
     class Meta:
         model = Agenda
-        fields = ['id', 'numero', 'anio', 'numero_formateado', 'letra', 'fecha_hora', 'fecha_registro',
+        fields = ['id', 'numero', 'codigo_reparticion', 'anio', 'numero_formateado', 'letra', 'fecha_hora', 'fecha_registro',
             'causante', 'asunto', 'tipo', 'origen', 'sistema_origen', 'referencia_externa', 'referencia_idempotencia',
             'estado_sigedoc', 'fecha_registro_sigedoc', 'registrado_sigedoc_por', 'registrado_sigedoc_por_nombre',
             'creado_por', 'creado_por_nombre', 'anulado', 'fecha_anulacion', 'anulado_por', 'anulado_por_nombre',
@@ -50,19 +50,26 @@ class DetalleSerializer(AgendaSerializer):
 
 
 class CrearSerializer(serializers.Serializer):
-    causante = serializers.CharField(max_length=255)
-    asunto = serializers.CharField(max_length=5000)
-    tipo = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
-    letra = serializers.CharField(max_length=10, required=False, allow_blank=True, default='')
+    causante = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    asunto = serializers.CharField(max_length=5000, required=False, allow_blank=True, default='')
+    letra = serializers.RegexField(r'^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{1,10}$', max_length=10,
+        error_messages={'required': 'La letra es obligatoria.', 'invalid': 'Ingresá únicamente letras, sin espacios ni signos.'})
     def validate(self, attrs):
         forbidden = set(self.initial_data) - set(self.fields)
         if forbidden: raise serializers.ValidationError({key: 'Este campo no puede enviarse.' for key in sorted(forbidden)})
         return attrs
 
 
-class ReservaSerializer(CrearSerializer):
+class ReservaSerializer(serializers.Serializer):
+    causante = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    asunto = serializers.CharField(max_length=5000, required=False, allow_blank=True, default='')
+    tipo = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     referencia = serializers.CharField(max_length=255)
     sistema = serializers.CharField(max_length=80, required=False)
+    def validate(self, attrs):
+        forbidden = set(self.initial_data) - set(self.fields)
+        if forbidden: raise serializers.ValidationError({key: 'Este campo no puede enviarse.' for key in sorted(forbidden)})
+        return attrs
 
 
 class AnularSerializer(serializers.Serializer):

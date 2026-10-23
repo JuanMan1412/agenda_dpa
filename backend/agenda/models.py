@@ -7,6 +7,14 @@ def anio_actual():
     return timezone.localdate().year
 
 
+def formatear_numero_expediente(numero, codigo_reparticion, letra, anio):
+    """Devuelve el identificador oficial; el correlativo se presenta con al menos 4 dígitos."""
+    if not codigo_reparticion:
+        # Datos históricos sin componentes oficiales verificados conservan su representación.
+        return f'{numero}/{anio}'
+    return f'{int(numero):04d}/{codigo_reparticion}-{letra}-{anio}'
+
+
 class Agenda(models.Model):
     """Registro de expedientes sobre la tabla historica de Agenda."""
     ORIGEN_MANUAL = 'MESA_ENTRADA'
@@ -16,6 +24,7 @@ class Agenda(models.Model):
     id = models.AutoField(primary_key=True)
     numero = models.PositiveIntegerField(editable=False)
     anio = models.PositiveSmallIntegerField(default=anio_actual, editable=False)
+    codigo_reparticion = models.CharField(max_length=20, blank=True, default='', editable=False)
     letra = models.CharField(max_length=10, blank=True, default='')
     fecha_hora = models.DateTimeField(default=timezone.now, editable=False)
     causante = models.CharField(max_length=255, blank=True, default='')
@@ -42,7 +51,7 @@ class Agenda(models.Model):
         verbose_name = 'Registro de expediente'
         verbose_name_plural = 'Registros de expedientes'
         constraints = [
-            models.UniqueConstraint(fields=['numero', 'anio'], name='expediente_numero_anio_unico'),
+            models.UniqueConstraint(fields=['numero', 'codigo_reparticion', 'letra', 'anio'], name='expediente_identidad_oficial_unica'),
             models.UniqueConstraint(fields=['sistema_origen', 'referencia_externa'], condition=~models.Q(sistema_origen='') & models.Q(referencia_externa__isnull=False), name='expediente_referencia_unica'),
             models.UniqueConstraint(fields=['sistema_origen', 'referencia_idempotencia'], condition=models.Q(referencia_idempotencia__isnull=False), name='expediente_idempotencia_unica'),
             models.CheckConstraint(condition=models.Q(numero__gt=0), name='expediente_numero_positivo'),
@@ -51,7 +60,7 @@ class Agenda(models.Model):
 
     @property
     def numero_formateado(self):
-        return f'{self.numero}/{self.anio}'
+        return formatear_numero_expediente(self.numero, self.codigo_reparticion, self.letra, self.anio)
 
     def __str__(self):
         return self.numero_formateado

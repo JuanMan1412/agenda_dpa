@@ -36,11 +36,13 @@ Se conservaron el modelo Django `Agenda`, la tabla física `agenda`, IDs, númer
 | Anulación | `anulado`, `fecha_anulacion`, `anulado_por`, `motivo_anulacion` |
 | Fechas técnicas | `created_at`, `updated_at` |
 
-`fecha_registro` en la respuesta es un alias de `fecha_hora`; no duplica la fecha en la base. `numero_formateado` se calcula como `numero/anio`. El frontend y los sistemas externos no pueden enviar número, año, origen, autores, fechas o estados en las altas.
+`fecha_registro` en la respuesta es un alias de `fecha_hora`; no duplica la fecha en la base. `fecha_hora` se asigna con `timezone.now()` en el backend. `numero` permanece entero y se completa a cuatro posiciones sólo al presentar el valor. La función central `formatear_numero_expediente` compone el identificador. `EXPEDIENTE_CODIGO_REPARTICION` configura el código para altas nuevas (por defecto `325`). Mesa de Entrada ingresa y puede editar la letra; la reserva del sistema TRAMITES usa la letra `ED`, configurable con `EXPEDIENTE_LETRA_TRAMITES`. La letra es variable porque los registros históricos incluyen `A` y valores vacíos. El tipo manual se asigna como `Registro manual`; la integración conserva el tipo enviado por Trámites y usa `Línea de Ribera` como valor predeterminado. El tipo no se modifica durante ediciones.
+
+La migración agrega `codigo_reparticion` vacío y no cambia filas existentes. En la base local revisada hay tres registros históricos con letras vacías o `A`, sin código de repartición registrado; no es posible afirmar que fueran `325-ED`. Esos registros conservan su número, año y formato anterior (`numero/anio`) hasta que una fuente oficial permita completar los componentes sin inferencias.
 
 Estados SIGEDoc: `PENDIENTE` y `REGISTRADO`. La anulación es independiente: un expediente registrado puede anularse conservando su registración y todo su historial. Un expediente anulado no puede marcarse como registrado. Anular no borra el registro ni devuelve el número al contador.
 
-Restricciones: `UNIQUE(numero, anio)`, número positivo, referencia única por sistema y clave de idempotencia única por sistema. Las referencias de integraciones históricas desconocidas se conservan sin atribuirles arbitrariamente un sistema.
+Restricciones: `UNIQUE(numero, codigo_reparticion, letra, anio)`, número positivo, referencia única por sistema y clave de idempotencia única por sistema. Las referencias de integraciones históricas desconocidas se conservan sin atribuirles arbitrariamente un sistema.
 
 ### Modelos de control
 
@@ -86,7 +88,7 @@ Todas las rutas locales requieren el Bearer JWT emitido por este backend; conser
 | `POST /api/expedientes/{id}/anular/` | Anular con `{"motivo": "..."}` obligatorio |
 | `GET /api/me/permisos/` | Permisos locales por sección y acción |
 
-Filtros de listado: `q` (número, `numero/anio`, causante, asunto o referencia), `anio`, `origen`, `estado=TODOS/PENDIENTE/REGISTRADO/ANULADO`, `hoy=true`, `orden=fecha_asc/numero_desc`, `page` y `page_size`. Pendientes y registrados excluyen anulados. `hoy` filtra por fecha de alta; el indicador **Registrados hoy** cuenta confirmaciones SIGEDoc de hoy. Las fechas se interpretan en horario argentino.
+Filtros de listado: `q` (número correlativo, identificador completo `NNNN/325-ED-AAAA`, formato histórico `numero/anio`, letra, causante, asunto o referencia), `anio`, `origen`, `estado=TODOS/PENDIENTE/REGISTRADO/ANULADO`, `hoy=true`, `orden=fecha_asc/numero_desc`, `page` y `page_size`. Pendientes y registrados excluyen anulados. `hoy` filtra por fecha de alta; el indicador **Registrados hoy** cuenta confirmaciones SIGEDoc de hoy. Las fechas se interpretan en horario argentino.
 
 | Rol | Consultar | Crear | Registrar SIGEDoc | Anular |
 | --- | --- | --- | --- | --- |
@@ -96,7 +98,7 @@ Filtros de listado: `q` (número, `numero/anio`, causante, asunto o referencia),
 
 Un rol desconocido o deshabilitado no obtiene permisos. “Mesa de Entrada” sigue siendo una oficina y una denominación de origen, no un rol. Los permisos se aplican en el backend, incluida cada acción personalizada; la UI sólo refleja esos permisos.
 
-Compatibilidad: `GET /api/agenda/` sigue devolviendo una lista sin paginación. `/api/agenda/manual/` y `/api/agenda/reservar/` apuntan a los servicios nuevos. Sus consumidores deben adaptar el cuerpo para aportar causante/asunto y, en reservas externas, referencia obligatoria. Se acepta `referencia_externa` como alias de `referencia`, y se conserva `letra` opcional. No se generan expedientes nuevos incompletos por compatibilidad con cuerpos antiguos.
+Compatibilidad: `GET /api/agenda/` sigue devolviendo una lista sin paginación. `/api/agenda/manual/` y `/api/agenda/reservar/` apuntan a los servicios nuevos. El alta manual requiere letra; causante y asunto son opcionales. La letra también se puede editar. El tipo manual se asigna en backend. En reservas externas se exige referencia y la letra se asigna en backend (`ED` para TRAMITES). Se acepta `referencia_externa` como alias de `referencia`. El correlativo, año y código de repartición no se aceptan desde el cliente.
 
 ## Integración de Trámites
 
@@ -133,12 +135,13 @@ Respuesta 201 (200 para reintentos):
   "id": 837,
   "numero": 15235,
   "anio": 2026,
-  "numero_formateado": "15235/2026",
+  "codigo_reparticion": "325",
+  "numero_formateado": "15235/325-ED-2026",
   "estado_sigedoc": "PENDIENTE"
 }
 ```
 
-La respuesta real incluye además los demás campos del registro. `sistema` es opcional; si se envía, debe coincidir con la credencial. El número y año nunca se envían en la solicitud.
+La respuesta real incluye además los demás campos del registro. Trámites debe guardar `id` como referencia estable y presentar `numero_formateado` como identificador visible. No debe crear un correlativo propio ni editar componentes del identificador. `sistema` es opcional; si se envía, debe coincidir con la credencial. El número y año nunca se envían en la solicitud.
 
 Consulta autenticada del propio sistema:
 

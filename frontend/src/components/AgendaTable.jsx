@@ -11,7 +11,7 @@ export default function AgendaTable({ registros, pendientes = false, puedeRegist
     return () => clearInterval(timer);
   }, [pendientes]);
   return <div className="table-scroll"><table className="records-table">
-    <thead><tr><th>N.º / año</th><th>Fecha</th><th>Origen</th><th>Causante</th><th>Asunto</th><th>{pendientes ? 'Tiempo pendiente' : 'SIGEDoc'}</th><th><span className="sr-only">Acciones</span></th></tr></thead>
+    <thead><tr><th>Número de expediente</th><th>Fecha</th><th>Origen</th><th>Causante</th><th>Asunto</th><th>{pendientes ? 'Tiempo pendiente' : 'SIGEDoc'}</th><th><span className="sr-only">Acciones</span></th></tr></thead>
     <tbody>{registros.map((row) => <tr key={row.id}>
       <td><Link className="record-number" to={`/expedientes/${row.id}`}>{row.numero_formateado || `${row.numero}/${row.anio}`}</Link></td>
       <td className="date-cell">{fecha(row.fecha_hora || row.fecha_registro)}</td>

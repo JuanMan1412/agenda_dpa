@@ -38,11 +38,16 @@ def filtrar(queryset, params):
     if data.get('hoy'): queryset = queryset.filter(fecha_hora__date=timezone.localdate())
     query = data.get('q', '').strip()
     if query:
-        parts = query.split('/')
-        if len(parts) == 2 and all(part.isdigit() for part in parts):
-            queryset = queryset.filter(numero=int(parts[0]), anio=int(parts[1]))
+        import re
+        official = re.fullmatch(r'(\d{1,10})/([A-Za-z0-9]{1,20})-([A-Za-z]{1,10})-(\d{4})', query)
+        legacy = re.fullmatch(r'(\d{1,10})/(\d{4})', query)
+        if official:
+            queryset = queryset.filter(numero=int(official.group(1)), codigo_reparticion__iexact=official.group(2),
+                letra__iexact=official.group(3), anio=int(official.group(4)))
+        elif legacy:
+            queryset = queryset.filter(numero=int(legacy.group(1)), anio=int(legacy.group(2)))
         else:
-            lookup = Q(causante__icontains=query) | Q(asunto__icontains=query) | Q(referencia_externa__icontains=query)
+            lookup = Q(causante__icontains=query) | Q(asunto__icontains=query) | Q(referencia_externa__icontains=query) | Q(letra__icontains=query)
             if query.isdigit(): lookup |= Q(numero=int(query))
             queryset = queryset.filter(lookup)
     return queryset.order_by('fecha_hora', 'id') if data.get('orden') == 'fecha_asc' else queryset.order_by('-anio', '-numero')

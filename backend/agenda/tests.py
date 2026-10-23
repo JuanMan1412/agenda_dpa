@@ -31,7 +31,8 @@ class RegistroTests(APITestCase):
         CorrelativoAnual.objects.get_or_create(anio=timezone.localdate().year)
 
     def manual(self, **values):
-        return self.client.post(reverse('expediente-manual'), {**BODY, **values}, format='json')
+        body = {key: value for key, value in BODY.items() if key != 'tipo'}
+        return self.client.post(reverse('expediente-manual'), {**body, 'letra': 'A', **values}, format='json')
 
     def reserve(self, reference='uuid-abc', key='test-service-key', **values):
         self.client.force_authenticate(user=None)
@@ -45,7 +46,13 @@ class RegistroTests(APITestCase):
         self.assertEqual([first.status_code, second.status_code, third.status_code], [201]*3)
         self.assertEqual([first.data['numero'], second.data['numero'], third.data['numero']], [1, 2, 3])
         self.assertEqual(first.data['estado_sigedoc'], 'PENDIENTE')
+        self.assertEqual(first.data['numero_formateado'], f'0001/325-A-{timezone.localdate().year}')
+        self.assertEqual(first.data['codigo_reparticion'], '325')
+        self.assertEqual(first.data['letra'], 'A')
         self.assertEqual(second.data['sistema_origen'], 'TRAMITES')
+        self.assertEqual(second.data['letra'], 'ED')
+        self.assertEqual(first.data['tipo'], 'Registro manual')
+        self.assertEqual(second.data['tipo'], 'LINEA_RIBERA')
         self.assertEqual(first.data['origen'], 'MESA_ENTRADA')
         self.assertEqual(AuditoriaExpediente.objects.filter(accion='CREAR_REGISTRO').count(), 3)
 
@@ -59,7 +66,7 @@ class RegistroTests(APITestCase):
 
     def test_manual_idempotency_prevents_double_click(self):
         for _ in range(2):
-            result = self.client.post(reverse('expediente-manual'), BODY, format='json', HTTP_IDEMPOTENCY_KEY='manual-uuid')
+            result = self.client.post(reverse('expediente-manual'), {'letra': 'A'}, format='json', HTTP_IDEMPOTENCY_KEY='manual-uuid')
         self.assertEqual(result.status_code, 200)
         self.assertEqual(Agenda.objects.count(), 1)
 
@@ -142,6 +149,7 @@ class RegistroTests(APITestCase):
         base = reverse('expediente-listar')
         self.assertEqual(self.client.get(base, {'q': str(first['numero'])}).data['count'], 1)
         self.assertEqual(self.client.get(base, {'q': first['numero_formateado']}).data['count'], 1)
+        self.assertEqual(self.client.get(base, {'q': 'A'}).data['count'], 2)
         self.assertEqual(self.client.get(base, {'q': 'municipalidad'}).data['count'], 1)
         self.assertEqual(self.client.get(base, {'estado': 'PENDIENTE'}).data['count'], 2)
         self.assertEqual(self.client.get(base, {'estado': 'REGISTRADO'}).data['count'], 0)
@@ -162,6 +170,42 @@ class RegistroTests(APITestCase):
         for values in [{'numero': 15235}, {'anio': 2027}, {'estado_sigedoc': 'REGISTRADO'}, {'origen': 'SISTEMA_TRAMITES'}]:
             self.assertEqual(self.manual(**values).status_code, 400)
         self.assertEqual(Agenda.objects.count(), 0)
+
+    def test_manual_letter_can_be_entered_and_edited(self):
+        created = self.manual(letra='B')
+        self.assertEqual(created.data['numero_formateado'], f'0001/325-B-{timezone.localdate().year}')
+        updated = self.client.patch(reverse('expediente-detalle', args=[created.data['id']]), {'letra': 'C'}, format='json')
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data['letra'], 'C')
+        self.assertEqual(updated.data['numero_formateado'], f'0001/325-C-{timezone.localdate().year}')
+
+    def test_manual_requires_letter_accepts_only_spanish_letters_and_optional_fields(self):
+        base = reverse('expediente-manual')
+        for value in ['2', 'A B', 'A-', 'A!']:
+            response = self.client.post(base, {'letra': value}, format='json')
+            self.assertEqual(response.status_code, 400)
+            self.assertIn('letra', response.data)
+        self.assertEqual(self.client.post(base, {}, format='json').status_code, 400)
+        for body in [
+            {'letra': 'ED'},
+            {'letra': 'ÁÑ'},
+            {'letra': 'B', 'causante': 'Juan Pérez'},
+            {'letra': 'C', 'asunto': 'Presentación'},
+            {'letra': 'D', 'causante': 'Juan Pérez', 'asunto': 'Presentación'},
+        ]:
+            response = self.client.post(base, body, format='json')
+            self.assertEqual(response.status_code, 201, response.data)
+            self.assertEqual(response.data['tipo'], 'Registro manual')
+            self.assertEqual(response.data['letra'], body['letra'].upper())
+            self.assertEqual(response.data['numero_formateado'], f"{response.data['numero']:04d}/325-{body['letra'].upper()}-{response.data['anio']}")
+            self.assertIsNotNone(response.data['fecha_hora'])
+        self.assertEqual(self.client.post(base, {'letra': 'X', 'tipo': 'Categoría editable'}, format='json').status_code, 400)
+
+    def test_tramites_assigns_default_category_when_source_omits_it(self):
+        response = self.reserve(tipo='')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['tipo'], 'Línea de Ribera')
+        self.assertEqual(response.data['letra'], 'ED')
 
     def test_historical_records_with_missing_metadata_remain_visible(self):
         historical = Agenda.objects.create(numero=42, anio=2025, letra='AP', origen='MESA_ENTRADA', fecha_hora=datetime(2025, 8, 1, 12, tzinfo=dt_timezone.utc))

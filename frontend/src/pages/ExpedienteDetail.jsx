@@ -46,7 +46,7 @@ export default function ExpedienteDetail() {
     <div className="detail-grid"><section className="detail-card"><h2>Datos del registro</h2><dl>
       <div><dt>Origen</dt><dd>{origen(row.origen)}</dd></div><div><dt>Fecha de registro</dt><dd>{fecha(row.fecha_hora)}</dd></div>
       <div><dt>Causante</dt><dd>{row.causante || 'Sin dato en el registro histórico'}</dd></div><div><dt>Asunto</dt><dd>{row.asunto || 'Sin dato en el registro histórico'}</dd></div>
-      <div><dt>Tipo / categoría</dt><dd>{row.tipo || '—'}</dd></div>{row.letra && <div><dt>Letra histórica</dt><dd>{row.letra}</dd></div>}
+      <div><dt>Tipo / categoría</dt><dd>{row.tipo || '—'}</dd></div>{row.letra && <div><dt>Letra</dt><dd>{row.letra}</dd></div>}
       <div><dt>Referencia de origen</dt><dd>{row.referencia_externa || '—'}</dd></div><div><dt>Creado por</dt><dd>{row.creado_por_nombre || row.sistema_origen || 'No informado en el registro histórico'}</dd></div>
     </dl></section>
     <section className="detail-card sigedoc-card"><p className="eyebrow">Registración en SIGEDoc</p><h2>Utilizá exactamente este número</h2><p className="expediente-number">{row.numero_formateado}</p><p className="muted">El número es el mismo en ambos sistemas. La confirmación sólo actualiza su estado de registración.</p>

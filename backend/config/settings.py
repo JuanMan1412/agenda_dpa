@@ -211,6 +211,14 @@ REST_FRAMEWORK = {
 # API KEYS
 # ---------------------------------------------------------
 
+# Código de repartición y letra asignada por backend a las reservas de Trámites. Los históricos no se reescriben.
+EXPEDIENTE_CODIGO_REPARTICION = os.getenv('EXPEDIENTE_CODIGO_REPARTICION', '325').strip()
+EXPEDIENTE_LETRA_TRAMITES = os.getenv('EXPEDIENTE_LETRA_TRAMITES', 'ED').strip().upper()
+if not re.fullmatch(r'[A-Za-z0-9]{1,20}', EXPEDIENTE_CODIGO_REPARTICION):
+    raise ImproperlyConfigured('EXPEDIENTE_CODIGO_REPARTICION debe contener entre 1 y 20 caracteres alfanumericos.')
+if not re.fullmatch(r'[A-Z]{1,10}', EXPEDIENTE_LETRA_TRAMITES):
+    raise ImproperlyConfigured('EXPEDIENTE_LETRA_TRAMITES debe contener entre 1 y 10 letras.')
+
 try:
     AGENDA_API_KEYS = json.loads(os.getenv('AGENDA_API_KEYS', '{}'))
 except json.JSONDecodeError as exc:
@@ -257,7 +265,7 @@ if PORTAL_DEFAULT_ROLE not in {'CONSULTOR', 'ADMINISTRATIVO', 'ADMINISTRADOR'}:
 SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': PORTAL_SIGNING_KEY,
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 PORTAL_AUTO_ENABLE_USERS = env_bool('PORTAL_AUTO_ENABLE_USERS', False)

@@ -1,9 +1,10 @@
 import hashlib
+from django.conf import settings
 from django.db import connection, transaction
 from django.db.models import Max, Q
 from django.utils import timezone
 from rest_framework.exceptions import APIException, ValidationError
-from .models import Agenda, AuditoriaExpediente, ControlNumeracion, CorrelativoAnual
+from .models import Agenda, AuditoriaExpediente, ControlNumeracion, CorrelativoAnual, formatear_numero_expediente
 
 
 class NumeracionNoHabilitada(APIException):
@@ -32,7 +33,10 @@ def estado_numeracion():
     ultimo = max(last or 0, counter.ultimo_numero if counter else 0)
     control = ControlNumeracion.objects.filter(pk=1).first()
     return {'anio': anio, 'ultimo_numero_base': last, 'ultimo_numero_consumido': ultimo,
-            'proximo_numero': ultimo + 1, 'habilitado': bool(control and control.habilitado)}
+            'proximo_numero': ultimo + 1,
+            'proximo_numero_formateado': formatear_numero_expediente(ultimo + 1,
+                settings.EXPEDIENTE_CODIGO_REPARTICION, '[LETRA]', anio),
+            'habilitado': bool(control and control.habilitado)}
 
 
 def puede_confirmar_numeracion(user):
@@ -74,6 +78,13 @@ def confirmar_numeracion(*, anio, ultimo_numero_libro, usuario):
 
 @transaction.atomic
 def crear_registro(*, causante, asunto, tipo='', letra='', usuario=None, sistema='', referencia=None, idempotencia=None):
+    if sistema:
+        letra = settings.EXPEDIENTE_LETRA_TRAMITES if sistema.upper() == 'TRAMITES' else ''
+        if sistema.upper() == 'TRAMITES' and not tipo:
+            tipo = 'Línea de Ribera'
+    else:
+        letra = (letra or '').strip().upper()
+        tipo = 'Registro manual'
     # Orden global estable para locks multiples evita deadlocks entre referencias.
     keys = []
     if referencia: keys.append(f'referencia:{sistema}:{referencia}')
@@ -88,7 +99,8 @@ def crear_registro(*, causante, asunto, tipo='', letra='', usuario=None, sistema
             raise ConflictoRegistro('La referencia y la clave de idempotencia corresponden a expedientes distintos.')
         if matches:
             existing = matches[0]
-            if existing.referencia_externa != referencia or (existing.causante, existing.asunto, existing.tipo, existing.letra) != (causante, asunto, tipo, letra):
+            if (existing.referencia_externa != referencia
+                or (existing.causante, existing.asunto, existing.tipo) != (causante, asunto, tipo)):
                 raise ConflictoRegistro('La solicitud repetida tiene datos distintos al expediente original.')
             return existing, False
     # Los reintentos ya asignados siguen disponibles aun si se bloquean nuevas altas.
@@ -101,7 +113,8 @@ def crear_registro(*, causante, asunto, tipo='', letra='', usuario=None, sistema
     counter = CorrelativoAnual.objects.select_for_update().get(pk=counter.pk)
     # El contador historico se inicializa en migracion/confirmacion, nunca desde MAX sin lock.
     numero = counter.ultimo_numero + 1
-    registro = Agenda.objects.create(numero=numero, anio=anio, fecha_hora=now,
+    codigo_reparticion = settings.EXPEDIENTE_CODIGO_REPARTICION
+    registro = Agenda.objects.create(numero=numero, anio=anio, codigo_reparticion=codigo_reparticion, fecha_hora=now,
         causante=causante, asunto=asunto, tipo=tipo, letra=letra,
         origen=f'SISTEMA_{sistema}' if sistema else Agenda.ORIGEN_MANUAL,
         sistema_origen=sistema, referencia_externa=referencia, referencia_idempotencia=idempotencia,
@@ -109,7 +122,8 @@ def crear_registro(*, causante, asunto, tipo='', letra='', usuario=None, sistema
     counter.ultimo_numero = numero
     counter.save(update_fields=['ultimo_numero'])
     AuditoriaExpediente.objects.create(registro=registro, usuario=usuario, sistema=sistema,
-        accion='CREAR_REGISTRO', datos={'numero': numero, 'anio': anio, 'origen': registro.origen, 'referencia': referencia})
+        accion='CREAR_REGISTRO', datos={'numero': numero, 'codigo_reparticion': codigo_reparticion, 'letra': letra,
+            'anio': anio, 'numero_formateado': registro.numero_formateado, 'origen': registro.origen, 'referencia': referencia})
     return registro, True
 
 
@@ -161,7 +175,10 @@ def editar_registro(registro_id, usuario, values):
     if registro.anulado:
         raise ConflictoRegistro('Un expediente anulado no puede editarse.')
     changes = {}
-    for field in ('causante', 'asunto', 'tipo', 'letra'):
+    if 'letra' in values and values['letra'] != registro.letra:
+        changes['letra'] = {'anterior': registro.letra, 'nuevo': values['letra'].upper()}
+        registro.letra = values['letra'].upper()
+    for field in ('causante', 'asunto'):
         if field in values and values[field] != getattr(registro, field):
             changes[field] = {'anterior': getattr(registro, field), 'nuevo': values[field]}
             setattr(registro, field, values[field])
